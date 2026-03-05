@@ -9,7 +9,8 @@ public:
     enum class Mode : uint8_t {
         NO_GAME = 0,
         IN_GAME = 1,
-        WRITE_PLAYER_NAME = 2
+        END_GAME = 2,
+        WRITE_PLAYER_NAME = 3,            
     };
 
     HMI(MatrixDisplay& display) : display(display) {
@@ -51,8 +52,14 @@ private:
     bool isDizzy = false; // Controller has been shaken hard
     unsigned long dizzyEndTime = 0;
 
+    // 1980s arcade palette
+    RgbColor neonCyan = RgbColor(0, 200, 255);   // Main movement color
+    RgbColor neonMagenta = RgbColor(255, 0, 150); // Color for center/crosshair
+    RgbColor dimCyan = neonCyan.Dim(64); // Trail/glow effect
+
     void noGameUpdateLoop();
     void inGameUpdateLoop();
+    void endGameUpdateLoop();
     void writePlayerNameUpdateLoop();
 
     /**

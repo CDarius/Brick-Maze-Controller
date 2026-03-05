@@ -55,6 +55,9 @@ void HMI::updateLoop() {
             case Mode::IN_GAME:
                 inGameUpdateLoop();
                 break;
+            case Mode::END_GAME:
+                endGameUpdateLoop();
+                break;
             case Mode::WRITE_PLAYER_NAME:
                 writePlayerNameUpdateLoop();
                 break;
@@ -126,7 +129,7 @@ void HMI::snakeLoop(uint32_t maxTimeMs, CancelToken& cancelToken) {
 
         // 3. Check edge collisions or random direction change
         // If it hits an edge, or with 10% probability, change direction
-        bool shouldTurn = (nextX < 0 || nextX >= width || nextY < 0 || nextY >= height || random(10) == 0);
+        bool shouldTurn = (nextX < 0 || nextX >= width || nextY < 0 || nextY >= height || random(6) == 0);
         if (shouldTurn) {
             const int8_t candidateDx[4] = {0, 0, -1, 1};
             const int8_t candidateDy[4] = {-1, 1, 0, 0};
@@ -284,7 +287,7 @@ void HMI::writePlayerNameUpdateLoop() {
     cancelToken = &localCancelToken;
 
     constexpr float tiltThreshold = 0.2f;
-    
+
     while (!cancelToken->isCancelled()) {
         uint8_t newDirection;
         // Direction determination logic (kept as in the original)
@@ -304,34 +307,19 @@ void HMI::writePlayerNameUpdateLoop() {
         }
         display.copyCanvasFrom(buffer);
 
-        // 1980s arcade palette
-        RgbColor neonCyan(0, 200, 255);   // Main movement color
-        RgbColor neonMagenta(255, 0, 150); // Color for center/crosshair
-        RgbColor dimCyan = neonCyan.Dim(64); // Trail/glow effect
+        uint8_t animPhase = (millis() / 300) % 3;
 
         switch (newDirection) {
             case MAIN_DISPLAY_DIRECTION_N:
-                display.drawPixel(2, 0, neonCyan);
-                display.drawPixel(1, 1, neonCyan);
-                display.drawPixel(3, 1, neonCyan);
-                display.drawPixel(2, 1, dimCyan);
-                display.drawPixel(0, 2, dimCyan);
-                display.drawPixel(1, 2, dimCyan);
-                display.drawPixel(2, 2, dimCyan);
-                display.drawPixel(3, 2, dimCyan);
-                display.drawPixel(4, 2, dimCyan);
+                display.drawPixel(2, 0, (animPhase == 2) ? neonCyan : dimCyan);
+                display.drawLine(1, 1, 3, 1, (animPhase == 1) ? neonCyan : dimCyan);
+                display.drawLine(0, 2, 4, 2, (animPhase == 0) ? neonCyan : dimCyan);
                 break;
 
             case MAIN_DISPLAY_DIRECTION_S:
-                display.drawPixel(2, 4, neonCyan);
-                display.drawPixel(1, 3, neonCyan);
-                display.drawPixel(3, 3, neonCyan);
-                display.drawPixel(2, 3, dimCyan);
-                display.drawPixel(0, 2, dimCyan);
-                display.drawPixel(1, 2, dimCyan);
-                display.drawPixel(2, 2, dimCyan);
-                display.drawPixel(3, 2, dimCyan);
-                display.drawPixel(4, 2, dimCyan);
+                display.drawPixel(2, 4, (animPhase == 2) ? neonCyan : dimCyan);
+                display.drawLine(1, 3, 3, 3, (animPhase == 1) ? neonCyan : dimCyan);
+                display.drawLine(0, 2, 4, 2, (animPhase == 0) ? neonCyan : dimCyan);
                 break;
 
             case MAIN_DISPLAY_DIRECTION_C:
@@ -419,11 +407,6 @@ void HMI::displayPointingDirection(uint8_t& direction) {
         }
         display.copyCanvasFrom(buffer);
 
-        // 1980s arcade palette
-        RgbColor neonCyan(0, 200, 255);   // Main movement color
-        RgbColor neonMagenta(255, 0, 150); // Color for center/crosshair
-        RgbColor dimCyan = neonCyan.Dim(64); // Trail/glow effect
-
         switch (direction) {
             case MAIN_DISPLAY_DIRECTION_N:
                 display.drawPixel(2, 0, neonCyan); // Tip
@@ -496,4 +479,28 @@ void HMI::displayPointingDirection(uint8_t& direction) {
         }
         display.show();
     }
+}
+
+void HMI::endGameUpdateLoop() {
+    CancelToken localCancelToken;
+    cancelToken = &localCancelToken;
+    
+    while (!cancelToken->isCancelled()) {
+        // Fade current pixels slightly to create a ghosting trail effect
+        RgbColor buffer[TOTAL_LEDS];
+        display.copyCanvasTo(buffer);
+        for (uint16_t i = 0; i < TOTAL_LEDS; i++) {
+            buffer[i] = buffer[i].Dim(127); // Dim existing pixels by 50%
+        }
+        display.copyCanvasFrom(buffer);
+
+        // Flashing filled square
+        if (millis() % 800 < 400) {
+            display.fillRect(1, 1, 3, 3, neonMagenta);
+        }        
+        display.show();
+        delay(50);
+    }
+
+    cancelToken = nullptr; // Clear the cancel token when exiting the loop
 }

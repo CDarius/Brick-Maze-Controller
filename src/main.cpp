@@ -15,12 +15,42 @@ MPU6886 imu(Wire);
 Controller controller(imu, MATRIX_BUTTON_PIN);
 SerialComm serailComm(Serial1);
 
-void showInitFailed(const char* displayMessage, const char* serialMessage) {
-    //display.clear();
-    //String displayMessageStr(displayMessage);
-    //displayMessageStr.toUpperCase();
-    //display.drawString(0,0, displayMessageStr, COLOR_RED, FONT_4x6);
-    //display.show();
+void showInitFailed(uint8_t displayNum, const char* serialMessage) {
+    display.clear();
+
+    // Write the F
+    display.drawPixel(0, 0, COLOR_RED);
+    display.drawPixel(0, 1, COLOR_RED);
+    display.drawPixel(0, 2, COLOR_RED);
+    display.drawPixel(0, 3, COLOR_RED);
+    display.drawPixel(0, 4, COLOR_RED);
+    display.drawPixel(1, 0, COLOR_RED);
+    display.drawPixel(1, 3, COLOR_RED);
+    
+    // Write the number
+    switch (displayNum) {
+        case 1:
+            // Write 1
+            display.drawPixel(4, 0, COLOR_RED);
+            display.drawPixel(4, 1, COLOR_RED);
+            display.drawPixel(4, 2, COLOR_RED);
+            display.drawPixel(4, 3, COLOR_RED);
+            display.drawPixel(4, 4, COLOR_RED);
+            break;
+        case 2:
+            // Write 2
+            display.drawPixel(3, 0, COLOR_RED);
+            display.drawPixel(4, 0, COLOR_RED);
+            display.drawPixel(4, 1, COLOR_RED);
+            display.drawPixel(3, 2, COLOR_RED);
+            display.drawPixel(4, 2, COLOR_RED);
+            display.drawPixel(3, 3, COLOR_RED);
+            display.drawPixel(3, 4, COLOR_RED);
+            display.drawPixel(4, 4, COLOR_RED);
+            break;
+    }
+    display.show();
+
     while (true)
     {
         Serial.println(serialMessage);
@@ -52,7 +82,7 @@ void setup() {
 
     // Initialize MPU6886 and controller
     if (!imu.begin()) {
-        showInitFailed("MPU6886 INIT FAILED", "Failed to initialize MPU6886 IMU sensor");
+        showInitFailed(1, "Failed to initialize MPU6886 IMU sensor");
     }
     controller.begin();
 
@@ -116,6 +146,18 @@ void readIncomingMessages() {
                 Serial.printf("Controller %s\n", enable ? "enabled" : "disabled");
             } else {
                 Serial.println("Invalid parameter for ENAB_CTRL command");
+            }
+        } else if (command == "SET_HMI_MODE") {
+            uint32_t mode;
+            if (reader.getUInt32(mode)) {
+                if (mode <= static_cast<uint32_t>(HMI::Mode::WRITE_PLAYER_NAME)) {
+                    hmi.setMode(static_cast<HMI::Mode>(mode));
+                    Serial.printf("HMI mode set to %u\n", mode);
+                } else {
+                    Serial.println("Invalid mode value for SET_HMI_MODE command");
+                }
+            } else {
+                Serial.println("Invalid parameter for SET_HMI_MODE command");
             }
         } else {
             Serial.println("Unknown command received: " + command);
