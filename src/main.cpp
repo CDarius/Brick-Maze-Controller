@@ -6,7 +6,11 @@
 #include <Controller.hpp>
 #include <SerialComm.hpp>
 #include <SerialCommandReader.hpp>
+#include <MatrixDisplay.hpp>
+#include <HMI.hpp>
 
+MatrixDisplay display(MATRIX_LED_PIN);
+HMI hmi(display);
 MPU6886 imu(Wire);
 Controller controller(imu, MATRIX_BUTTON_PIN);
 SerialComm serailComm(Serial1);
@@ -32,6 +36,14 @@ void setup() {
     Serial1.begin (115200, SERIAL_8N1, REMOTE_CONTROLLER_UART_RX, REMOTE_CONTROLLER_UART_TX, false);
     Serial1.setTimeout(0);
 
+    // Initialize random seed with noise from an unconnected ADC pin for better randomness in the game
+    randomSeed(analogRead(0));
+
+    // Initialize the display
+    display.begin();
+    display.setBrightness(40);
+    display.clear();
+    display.show();
 
     // Initialize internal I2C. The MPU6886 on the M5Atom is on this bus.
     // The MPU6886 library will use the default 'Wire' object.
@@ -44,6 +56,17 @@ void setup() {
     }
     controller.begin();
 
+    // Create display_task on core 1
+    xTaskCreatePinnedToCore(
+        [](void* param) { hmi.updateLoop(); }, // Task function
+        "DisplayTask",                      // Name
+        4096,                               // Stack size
+        nullptr,                            // Parameter
+        1,                                  // Priority
+        nullptr,                            // Task handle
+        1                                   // Core 1
+    );
+    
     Serial.println("Initialization successful. Starting main loop...");
 }
     
@@ -57,6 +80,11 @@ void loop() {
         serailComm.sendXYangles(accX, accY, false);
         bool buttonPressed = controller.isButtonPressed();
         serailComm.sendXYangles(accX, accY, buttonPressed);
+
+        // Send IMU data also to HMI
+        float gz, gy, gx;
+        imu.getGyro(&gx, &gy, &gz);
+        hmi.updateIMUData(accX, accY, 0.0f, gx, gy, gz);
     }
 
     readIncomingMessages();

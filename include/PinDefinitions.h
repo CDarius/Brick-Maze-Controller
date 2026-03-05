@@ -5,3 +5,4 @@
 #define REMOTE_CONTROLLER_UART_RX  26
 
 #define MATRIX_BUTTON_PIN          39
+#define MATRIX_LED_PIN             27

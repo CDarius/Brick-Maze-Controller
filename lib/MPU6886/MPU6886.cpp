@@ -7,14 +7,15 @@
 #define MPU6886_PWR_MGMT_1      0x6B
 #define MPU6886_PWR_MGMT_2      0x6C
 #define MPU6886_CONFIG          0x1A
+#define MPU6886_SMPLRT_DIV      0x19
 #define MPU6886_GYRO_CONFIG     0x1B
 #define MPU6886_ACCEL_CONFIG    0x1C
+#define MPU6886_ACCEL_CONFIG2   0x1D
 #define MPU6886_ACCEL_XOUT_H    0x3B
 #define MPU6886_GYRO_XOUT_H     0x43
 #define MPU6886_TEMP_OUT_H      0x41
 
 // Default scale factors
-#define ACCEL_SCALE (1.0f / 16384.0f)  // ±2g range
 #define GYRO_SCALE  (1.0f / 131.0f)    // ±250°/s range
 #define TEMP_SCALE  (1.0f / 333.87f)   // Temperature scale
 #define TEMP_OFFSET 21.0f              // Temperature at 0 register value
@@ -23,7 +24,7 @@
  * Initialize the MPU6886 sensor with default configurations.
  * @return true if initialization was successful, false otherwise.
  */
-bool MPU6886::begin(void) {
+bool MPU6886::begin(AccelScale accelScale) {
     delay(100);  // Give device time to stabilize
     
     // Reset the device first
@@ -48,12 +49,21 @@ bool MPU6886::begin(void) {
     
     // Set DLPF to 41Hz bandwidth (recommended for gyro stability)
     writeByte(MPU6886_CONFIG, 0x03);
+
+    if (!setSampleRateDivider(currentSampleRateDivider)) {
+        return false;
+    }
+
+    if (!setAccelFilter(currentAccelFilter)) {
+        return false;
+    }
     
     // Configure gyroscope range to ±250°/s (0x00)
     writeByte(MPU6886_GYRO_CONFIG, 0x00);
     
-    // Configure accelerometer range to ±2g (0x00)
-    writeByte(MPU6886_ACCEL_CONFIG, 0x00);
+    if (!setAccelScale(accelScale)) {
+        return false;
+    }
     delay(10);
     
     // Disable FIFO
@@ -61,6 +71,81 @@ bool MPU6886::begin(void) {
     writeByte(MPU6886_FIFO_EN, 0x00);
     
     return true;
+}
+
+bool MPU6886::setAccelScale(AccelScale accelScale) {
+    float scaleFactor;
+
+    switch (accelScale) {
+        case AccelScale::RANGE_2G:
+            scaleFactor = 1.0f / 16384.0f;
+            break;
+        case AccelScale::RANGE_4G:
+            scaleFactor = 1.0f / 8192.0f;
+            break;
+        case AccelScale::RANGE_8G:
+            scaleFactor = 1.0f / 4096.0f;
+            break;
+        case AccelScale::RANGE_16G:
+            scaleFactor = 1.0f / 2048.0f;
+            break;
+        default:
+            return false;
+    }
+
+    if (!writeByte(MPU6886_ACCEL_CONFIG, static_cast<uint8_t>(accelScale))) {
+        return false;
+    }
+
+    accelScaleFactor = scaleFactor;
+    currentAccelScale = accelScale;
+
+    return true;
+}
+
+float MPU6886::getAccelGRange() const {
+    switch (currentAccelScale) {
+        case AccelScale::RANGE_2G:
+            return 2.0f;
+        case AccelScale::RANGE_4G:
+            return 4.0f;
+        case AccelScale::RANGE_8G:
+            return 8.0f;
+        case AccelScale::RANGE_16G:
+            return 16.0f;
+        default:
+            return 2.0f;
+    }
+}
+
+bool MPU6886::setAccelFilter(AccelFilter filter) {
+    if (!writeByte(MPU6886_ACCEL_CONFIG2, static_cast<uint8_t>(filter))) {
+        return false;
+    }
+
+    currentAccelFilter = filter;
+    return true;
+}
+
+bool MPU6886::setSampleRateDivider(uint8_t divider) {
+    if (!writeByte(MPU6886_SMPLRT_DIV, divider)) {
+        return false;
+    }
+
+    currentSampleRateDivider = divider;
+    return true;
+}
+
+MPU6886::AccelScale MPU6886::getAccelScale() const {
+    return currentAccelScale;
+}
+
+MPU6886::AccelFilter MPU6886::getAccelFilter() const {
+    return currentAccelFilter;
+}
+
+uint8_t MPU6886::getSampleRateDivider() const {
+    return currentSampleRateDivider;
 }
 
 /**
@@ -87,9 +172,9 @@ void MPU6886::getAccel(float* ax, float* ay, float* az) {
     int16_t ay_raw = (int16_t)((buf[2] << 8) | buf[3]);
     int16_t az_raw = (int16_t)((buf[4] << 8) | buf[5]);
     
-    *ax = (float)ax_raw * ACCEL_SCALE;
-    *ay = (float)ay_raw * ACCEL_SCALE;
-    *az = (float)az_raw * ACCEL_SCALE;
+    *ax = (float)ax_raw * accelScaleFactor;
+    *ay = (float)ay_raw * accelScaleFactor;
+    *az = (float)az_raw * accelScaleFactor;
 }
 
 /**
