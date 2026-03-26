@@ -5,7 +5,7 @@ void Controller::begin() {
 
     maxAccValue = 0.8f;
     isEnabled = true;
-    updateRate = 100;
+    updateRate = 50;
 }
 
 bool Controller::getXY(float& x, float& y) {

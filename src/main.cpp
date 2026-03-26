@@ -84,6 +84,8 @@ void setup() {
     if (!imu.begin()) {
         showInitFailed(1, "Failed to initialize MPU6886 IMU sensor");
     }
+    imu.setAccelFilter(MPU6886::AccelFilter::BW_184HZ); // Set a low-pass filter to reduce noise in the accelerometer data
+    imu.setSampleRateDivider(4); // Set sample rate to 200Hz (1kHz / (1 + 4))
     controller.begin();
 
     // Create display_task on core 1
