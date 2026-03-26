@@ -152,7 +152,7 @@ void readIncomingMessages() {
         } else if (command == "SET_HMI_MODE") {
             uint32_t mode;
             if (reader.getUInt32(mode)) {
-                if (mode <= static_cast<uint32_t>(HMI::Mode::WRITE_PLAYER_NAME)) {
+                if (mode <= static_cast<uint32_t>(HMI::Mode::WAITING_TO_START)) {
                     hmi.setMode(static_cast<HMI::Mode>(mode));
                     Serial.printf("HMI mode set to %u\n", mode);
                 } else {

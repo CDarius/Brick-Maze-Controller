@@ -10,7 +10,8 @@ public:
         NO_GAME = 0,
         IN_GAME = 1,
         END_GAME = 2,
-        WRITE_PLAYER_NAME = 3,            
+        WRITE_PLAYER_NAME = 3,
+        WAITING_TO_START = 4,
     };
 
     HMI(MatrixDisplay& display) : display(display) {
@@ -61,6 +62,7 @@ private:
     void inGameUpdateLoop();
     void endGameUpdateLoop();
     void writePlayerNameUpdateLoop();
+    void waitingToStartUpdateLoop();
 
     /**
      * Display a rainbow stripes animation that scrolls across the display. The colors will shift 

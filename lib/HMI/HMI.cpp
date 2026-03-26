@@ -52,6 +52,9 @@ void HMI::updateLoop() {
             case Mode::NO_GAME:
                 noGameUpdateLoop();
                 break;
+            case Mode::WAITING_TO_START:
+                waitingToStartUpdateLoop();
+                break;
             case Mode::IN_GAME:
                 inGameUpdateLoop();
                 break;
@@ -503,4 +506,9 @@ void HMI::endGameUpdateLoop() {
     }
 
     cancelToken = nullptr; // Clear the cancel token when exiting the loop
+}
+
+void HMI::waitingToStartUpdateLoop() {
+    // Reuse the same pulsing rectangle animation as end-game mode.
+    endGameUpdateLoop();
 }
